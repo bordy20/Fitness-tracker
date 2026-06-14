@@ -13,6 +13,8 @@ import { HistoryScreen } from './src/screens/HistoryScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { onAuthChange, AuthUser } from './src/services/authService';
+import { setCloudUser, downloadAllData } from './src/services/cloudSyncService';
+import { restoreFromCloud } from './src/services/storageService';
 import { isFirebaseConfigured } from './src/config/firebase';
 import { colors, borderRadius } from './src/theme';
 
@@ -58,8 +60,17 @@ export default function App() {
       setAuthLoading(false);
       return;
     }
-    const unsub = onAuthChange(u => {
+    const unsub = onAuthChange(async u => {
       setUser(u);
+      if (u) {
+        setCloudUser(u.uid);
+        try {
+          const { logs, profile, settings } = await downloadAllData();
+          await restoreFromCloud(logs, profile, settings);
+        } catch (_) {}
+      } else {
+        setCloudUser(null);
+      }
       setAuthLoading(false);
     });
     return unsub;
@@ -104,7 +115,7 @@ export default function App() {
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : isFirebaseConfigured && !user ? (
-          <LoginScreen onLogin={setUser} />
+          <LoginScreen onLogin={u => { setCloudUser(u.uid); setUser(u); }} />
         ) : (
           mainApp
         )}

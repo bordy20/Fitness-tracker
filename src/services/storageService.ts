@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DailyLog, UserProfile, AppSettings, FoodEntry, ExerciseEntry } from '../types';
+import { uploadLog, uploadProfile, uploadSettings } from './cloudSyncService';
 
 const KEYS = {
   DAILY_LOG_PREFIX: 'daily_log_',
@@ -29,6 +30,7 @@ export async function getLogForDate(date: string): Promise<DailyLog> {
 
 export async function saveLog(log: DailyLog): Promise<void> {
   await AsyncStorage.setItem(dateKey(log.date), JSON.stringify(log));
+  uploadLog(log).catch(() => {}); // fire-and-forget cloud sync
 }
 
 export async function addFoodEntry(entry: FoodEntry): Promise<DailyLog> {
@@ -90,6 +92,7 @@ export async function getUserProfile(): Promise<UserProfile | null> {
 
 export async function saveUserProfile(profile: UserProfile): Promise<void> {
   await AsyncStorage.setItem(KEYS.USER_PROFILE, JSON.stringify(profile));
+  uploadProfile(profile).catch(() => {});
 }
 
 export async function getSettings(): Promise<AppSettings> {
@@ -100,6 +103,15 @@ export async function getSettings(): Promise<AppSettings> {
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
   await AsyncStorage.setItem(KEYS.SETTINGS, JSON.stringify(settings));
+  uploadSettings(settings).catch(() => {});
+}
+
+export async function restoreFromCloud(logs: DailyLog[], profile: UserProfile | null, settings: AppSettings | null): Promise<void> {
+  await Promise.all(logs.map(log =>
+    AsyncStorage.setItem(dateKey(log.date), JSON.stringify(log))
+  ));
+  if (profile) await AsyncStorage.setItem(KEYS.USER_PROFILE, JSON.stringify(profile));
+  if (settings) await AsyncStorage.setItem(KEYS.SETTINGS, JSON.stringify(settings));
 }
 
 function createEmptyLog(date: string): DailyLog {

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
-import { Pedometer } from 'expo-sensors';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,6 +27,7 @@ export function StepsScreen() {
     }
 
     (async () => {
+      const { Pedometer } = await import('expo-sensors');
       const { status } = await Pedometer.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Motion permission is required to track steps');

@@ -13,7 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ExerciseLogItem } from '../components/ExerciseLogItem';
-import { getTodayLog, addExerciseEntry, removeExerciseEntry } from '../services/storageService';
+import { getTodayLog, addExerciseEntry, removeExerciseEntry, updateExerciseEntry } from '../services/storageService';
 import { ExerciseEntry, ExerciseSet } from '../types';
 import { colors, spacing, borderRadius, typography } from '../theme';
 
@@ -58,12 +58,34 @@ const categoryColors: Record<Category, string> = {
 export function ExerciseScreen() {
   const [exercises, setExercises] = useState<ExerciseEntry[]>([]);
   const [modal, setModal] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<ExerciseEntry | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category>('strength');
   const [customName, setCustomName] = useState('');
   const [duration, setDuration] = useState('30');
   const [sets, setSets] = useState('3');
   const [reps, setReps] = useState('10');
   const [weight, setWeight] = useState('');
+
+  const openEdit = (entry: ExerciseEntry) => {
+    setEditingEntry(entry);
+    setSelectedCategory(entry.category as Category);
+    setDuration(String(entry.duration));
+    const firstSet = entry.sets?.[0];
+    setSets(entry.sets ? String(entry.sets.length) : '3');
+    setReps(firstSet?.reps ? String(firstSet.reps) : '10');
+    setWeight(firstSet?.weight ? String(firstSet.weight) : '');
+    setModal(true);
+  };
+
+  const closeModal = () => {
+    setModal(false);
+    setEditingEntry(null);
+    setCustomName('');
+    setDuration('30');
+    setSets('3');
+    setReps('10');
+    setWeight('');
+  };
 
   useFocusEffect(useCallback(() => {
     getTodayLog().then(log => setExercises(log.exercises));
@@ -72,47 +94,67 @@ export function ExerciseScreen() {
   const totalMinutes = exercises.reduce((s, e) => s + e.duration, 0);
   const totalCalories = exercises.reduce((s, e) => s + e.caloriesBurned, 0);
 
+  const buildSets = () =>
+    selectedCategory === 'strength'
+      ? Array.from({ length: parseInt(sets) || 3 }, (_, i) => ({
+          setNumber: i + 1,
+          reps: parseInt(reps) || 10,
+          weight: weight ? parseFloat(weight) : undefined,
+        } as ExerciseSet))
+      : undefined;
+
   const handleAddPreset = async (preset: typeof PRESETS.strength[0]) => {
     const dur = parseInt(duration) || 30;
-    const calPerMin = preset.calPerMin;
-    const entry: ExerciseEntry = {
-      id: Date.now().toString(),
-      timestamp: Date.now(),
-      name: preset.name,
-      category: selectedCategory,
-      duration: dur,
-      caloriesBurned: Math.round(calPerMin * dur),
-      sets: selectedCategory === 'strength' ? Array.from({ length: parseInt(sets) || 3 }, (_, i) => ({
-        setNumber: i + 1,
-        reps: parseInt(reps) || 10,
-        weight: weight ? parseFloat(weight) : undefined,
-      } as ExerciseSet)) : undefined,
-    };
-    const log = await addExerciseEntry(entry);
-    setExercises(log.exercises);
-    setModal(false);
+    if (editingEntry) {
+      const log = await updateExerciseEntry(editingEntry.id, {
+        name: preset.name,
+        category: selectedCategory,
+        duration: dur,
+        caloriesBurned: Math.round(preset.calPerMin * dur),
+        sets: buildSets(),
+      });
+      setExercises(log.exercises);
+    } else {
+      const entry: ExerciseEntry = {
+        id: Date.now().toString(),
+        timestamp: Date.now(),
+        name: preset.name,
+        category: selectedCategory,
+        duration: dur,
+        caloriesBurned: Math.round(preset.calPerMin * dur),
+        sets: buildSets(),
+      };
+      const log = await addExerciseEntry(entry);
+      setExercises(log.exercises);
+    }
+    closeModal();
   };
 
   const handleAddCustom = async () => {
-    if (!customName.trim()) { Alert.alert('Enter exercise name'); return; }
+    if (!editingEntry && !customName.trim()) { Alert.alert('Enter exercise name'); return; }
     const dur = parseInt(duration) || 30;
-    const entry: ExerciseEntry = {
-      id: Date.now().toString(),
-      timestamp: Date.now(),
-      name: customName.trim(),
-      category: selectedCategory,
-      duration: dur,
-      caloriesBurned: Math.round(7 * dur),
-      sets: selectedCategory === 'strength' ? Array.from({ length: parseInt(sets) || 3 }, (_, i) => ({
-        setNumber: i + 1,
-        reps: parseInt(reps) || 10,
-        weight: weight ? parseFloat(weight) : undefined,
-      } as ExerciseSet)) : undefined,
-    };
-    const log = await addExerciseEntry(entry);
-    setExercises(log.exercises);
-    setModal(false);
-    setCustomName('');
+    if (editingEntry) {
+      const log = await updateExerciseEntry(editingEntry.id, {
+        category: selectedCategory,
+        duration: dur,
+        caloriesBurned: Math.round(7 * dur),
+        sets: buildSets(),
+      });
+      setExercises(log.exercises);
+    } else {
+      const entry: ExerciseEntry = {
+        id: Date.now().toString(),
+        timestamp: Date.now(),
+        name: customName.trim(),
+        category: selectedCategory,
+        duration: dur,
+        caloriesBurned: Math.round(7 * dur),
+        sets: buildSets(),
+      };
+      const log = await addExerciseEntry(entry);
+      setExercises(log.exercises);
+    }
+    closeModal();
   };
 
   const handleDelete = async (id: string) => {
@@ -163,7 +205,7 @@ export function ExerciseScreen() {
         ) : (
           <View style={styles.list}>
             {exercises.map(e => (
-              <ExerciseLogItem key={e.id} entry={e} onDelete={handleDelete} />
+              <ExerciseLogItem key={e.id} entry={e} onDelete={handleDelete} onEdit={openEdit} />
             ))}
           </View>
         )}
@@ -174,8 +216,8 @@ export function ExerciseScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Log Exercise</Text>
-              <TouchableOpacity onPress={() => setModal(false)}>
+              <Text style={styles.modalTitle}>{editingEntry ? 'Edit Exercise' : 'Log Exercise'}</Text>
+              <TouchableOpacity onPress={closeModal}>
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
@@ -254,7 +296,7 @@ export function ExerciseScreen() {
                   placeholderTextColor={colors.textMuted}
                 />
                 <TouchableOpacity style={styles.customAddBtn} onPress={handleAddCustom}>
-                  <Ionicons name="add" size={20} color={colors.text} />
+                  <Ionicons name={editingEntry ? 'checkmark' : 'add'} size={20} color={colors.text} />
                 </TouchableOpacity>
               </View>
             </ScrollView>

@@ -106,6 +106,20 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
   uploadSettings(settings).catch(() => {});
 }
 
+export async function updateFoodEntry(id: string, updates: Partial<FoodEntry>): Promise<DailyLog> {
+  const log = await getTodayLog();
+  log.foods = log.foods.map(f => f.id === id ? { ...f, ...updates } : f);
+  await saveLog(log);
+  return log;
+}
+
+export async function updateExerciseEntry(id: string, updates: Partial<ExerciseEntry>): Promise<DailyLog> {
+  const log = await getTodayLog();
+  log.exercises = log.exercises.map(e => e.id === id ? { ...e, ...updates } : e);
+  await saveLog(log);
+  return log;
+}
+
 export async function restoreFromCloud(logs: DailyLog[], profile: UserProfile | null, settings: AppSettings | null): Promise<void> {
   await Promise.all(logs.map(log =>
     AsyncStorage.setItem(dateKey(log.date), JSON.stringify(log))

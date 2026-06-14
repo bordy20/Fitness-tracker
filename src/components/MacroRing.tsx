@@ -39,8 +39,7 @@ export function MacroRing({ label, value, goal, color, unit, size = 80 }: Props)
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
           strokeLinecap="round"
-          rotation="-90"
-          origin={`${size / 2}, ${size / 2}`}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
       <View style={[styles.center, { width: size, height: size }]}>

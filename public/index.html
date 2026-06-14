@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>FitTrack AI</title>
+    <style>
+      html, body { height: 100%; margin: 0; padding: 0; background: #0F0F1A; }
+      body { overflow: hidden; }
+      #root { display: flex; height: 100%; flex: 1; }
+    </style>
+    <script>
+      window.onerror = function(msg, src, line, col, err) {
+        var d = document.createElement('div');
+        d.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#0F0F1A;color:#FF6584;padding:20px;font-family:monospace;font-size:12px;overflow:auto;z-index:9999;white-space:pre-wrap';
+        d.textContent = 'JS ERROR:\n' + msg + '\n\n' + (err && err.stack ? err.stack : src + ':' + line);
+        document.body.appendChild(d);
+      };
+      window.addEventListener('unhandledrejection', function(e) {
+        var d = document.createElement('div');
+        d.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#0F0F1A;color:#FF6584;padding:20px;font-family:monospace;font-size:12px;overflow:auto;z-index:9999;white-space:pre-wrap';
+        d.textContent = 'PROMISE ERROR:\n' + (e.reason && e.reason.stack ? e.reason.stack : String(e.reason));
+        document.body.appendChild(d);
+      });
+    </script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

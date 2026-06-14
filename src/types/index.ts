@@ -53,6 +53,7 @@ export interface UserProfile {
   age: number;
   gender: 'male' | 'female' | 'other';
   activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+  photoURL?: string;
   goals: {
     calories: number;
     protein: number;
@@ -65,6 +66,9 @@ export interface UserProfile {
 
 export interface AppSettings {
   claudeApiKey: string;
+  openaiApiKey: string;
+  geminiApiKey: string;
+  groqApiKey: string;
   units: 'metric' | 'imperial';
   theme: 'dark' | 'light';
 }

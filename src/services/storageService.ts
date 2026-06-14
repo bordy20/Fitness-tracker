@@ -98,7 +98,7 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
 export async function getSettings(): Promise<AppSettings> {
   const raw = await AsyncStorage.getItem(KEYS.SETTINGS);
   if (raw) return JSON.parse(raw);
-  return { claudeApiKey: '', units: 'metric', theme: 'dark' };
+  return { claudeApiKey: '', openaiApiKey: '', geminiApiKey: '', groqApiKey: '', units: 'metric', theme: 'dark' };
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Platform, TextInput, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +17,7 @@ export function StepsScreen() {
   const [steps, setSteps] = useState(0);
   const [isPedometerAvailable, setIsPedometerAvailable] = useState(false);
   const [recentLogs, setRecentLogs] = useState<DailyLog[]>([]);
+  const [manualInput, setManualInput] = useState('');
 
   useEffect(() => {
     let subscription: { remove: () => void } | null = null;
@@ -86,6 +87,37 @@ export function StepsScreen() {
         <StepRing steps={steps} goal={STEP_GOAL} size={180} />
         <Text style={styles.goalText}>Daily goal: {STEP_GOAL.toLocaleString()} steps</Text>
       </LinearGradient>
+
+      {/* Manual step entry (web only) */}
+      {Platform.OS === 'web' && (
+        <View style={styles.manualCard}>
+          <Text style={styles.sectionTitle}>Enter Steps Manually</Text>
+          <Text style={styles.manualHint}>Check Apple Health or Google Fit for your step count</Text>
+          <View style={styles.manualRow}>
+            <TextInput
+              style={styles.manualInput}
+              value={manualInput}
+              onChangeText={setManualInput}
+              keyboardType="numeric"
+              placeholder={`Current: ${steps.toLocaleString()}`}
+              placeholderTextColor={colors.textMuted}
+            />
+            <TouchableOpacity
+              style={styles.manualBtn}
+              onPress={async () => {
+                const n = parseInt(manualInput, 10);
+                if (!isNaN(n) && n >= 0) {
+                  setSteps(n);
+                  await updateSteps(n);
+                  setManualInput('');
+                }
+              }}
+            >
+              <Text style={styles.manualBtnText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Stats Row */}
       <View style={styles.statsRow}>
@@ -187,6 +219,12 @@ const styles = StyleSheet.create({
   barTrack: { width: '60%', height: 80, justifyContent: 'flex-end' },
   bar: { width: '100%', borderRadius: borderRadius.sm },
   barLabel: { ...typography.caption, color: colors.textSecondary, fontSize: 10 },
+  manualCard: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.md, gap: spacing.sm },
+  manualHint: { ...typography.caption, color: colors.textMuted },
+  manualRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  manualInput: { flex: 1, backgroundColor: colors.background, borderRadius: borderRadius.md, padding: spacing.sm, color: colors.text, ...typography.body, borderWidth: 1, borderColor: colors.border },
+  manualBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  manualBtnText: { ...typography.bodyBold, color: colors.text },
   tipsCard: { backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.md, gap: spacing.md },
   tip: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   tipIcon: { width: 32, height: 32, backgroundColor: colors.primary + '20', borderRadius: borderRadius.sm, justifyContent: 'center', alignItems: 'center' },

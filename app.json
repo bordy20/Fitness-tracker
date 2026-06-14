@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "FitTrack AI",
+    "slug": "fitness-tracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F0F1A"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.fittrackapp.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "FitTrack AI uses your camera to scan food for nutritional analysis.",
+        "NSPhotoLibraryUsageDescription": "FitTrack AI accesses your photos to analyze food nutrition.",
+        "NSMotionUsageDescription": "FitTrack AI uses motion sensors to count your daily steps."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F0F1A"
+      },
+      "package": "com.fittrackapp.app",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "ACTIVITY_RECOGNITION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-camera",
+      "expo-image-picker",
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "FitTrack AI uses motion sensors to count your daily steps."
+        }
+      ]
+    ]
+  }
+}

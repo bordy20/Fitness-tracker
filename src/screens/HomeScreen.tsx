@@ -17,15 +17,16 @@ import { MacroRing } from '../components/MacroRing';
 import { ProgressBar } from '../components/ProgressBar';
 import { FoodLogItem } from '../components/FoodLogItem';
 import { ExerciseLogItem } from '../components/ExerciseLogItem';
-import { getTodayLog, removeFoodEntry, removeExerciseEntry, updateWater, updateFoodEntry, updateExerciseEntry } from '../services/storageService';
+import { getTodayLog, removeFoodEntry, removeExerciseEntry, updateWater, updateFoodEntry, updateExerciseEntry, getUserProfile } from '../services/storageService';
 import { DailyLog, FoodEntry, ExerciseEntry } from '../types';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import { Toast } from '../components/Toast';
 
-const DEFAULT_GOALS = { calories: 2000, protein: 150, carbs: 250, fat: 65 };
+const FALLBACK_GOALS = { calories: 2000, protein: 150, carbs: 250, fat: 65 };
 
 export function HomeScreen() {
   const [log, setLog] = useState<DailyLog | null>(null);
+  const [goals, setGoals] = useState(FALLBACK_GOALS);
   const [refreshing, setRefreshing] = useState(false);
   const [editingFood, setEditingFood] = useState<FoodEntry | null>(null);
   const [editName, setEditName] = useState('');
@@ -49,8 +50,16 @@ export function HomeScreen() {
   };
 
   const loadLog = useCallback(async () => {
-    const data = await getTodayLog();
+    const [data, profile] = await Promise.all([getTodayLog(), getUserProfile()]);
     setLog(data);
+    if (profile?.goals) {
+      setGoals({
+        calories: profile.goals.calories || FALLBACK_GOALS.calories,
+        protein:  profile.goals.protein  || FALLBACK_GOALS.protein,
+        carbs:    profile.goals.carbs    || FALLBACK_GOALS.carbs,
+        fat:      profile.goals.fat      || FALLBACK_GOALS.fat,
+      });
+    }
   }, []);
 
   useFocusEffect(useCallback(() => { loadLog(); }, [loadLog]));
@@ -203,7 +212,7 @@ export function HomeScreen() {
           <View style={styles.calorieDivider} />
           <View style={styles.calorieStat}>
             <Text style={[styles.calorieStatValue, { color: colors.primary }]}>
-              {DEFAULT_GOALS.calories - netCalories}
+              {goals.calories - netCalories}
             </Text>
             <Text style={styles.calorieStatLabel}>Remaining</Text>
           </View>
@@ -211,7 +220,7 @@ export function HomeScreen() {
         <ProgressBar
           label="Daily Calories"
           value={netCalories}
-          goal={DEFAULT_GOALS.calories}
+          goal={goals.calories}
           color={colors.primary}
           unit=" kcal"
         />
@@ -227,9 +236,9 @@ export function HomeScreen() {
         <View style={styles.macrosCard}>
           <Text style={styles.sectionTitle}>Macros</Text>
           <View style={styles.macrosGrid}>
-            <MacroRing label="Protein" value={totalProtein} goal={DEFAULT_GOALS.protein} color={colors.protein} unit="g" size={72} />
-            <MacroRing label="Carbs" value={totalCarbs} goal={DEFAULT_GOALS.carbs} color={colors.carbs} unit="g" size={72} />
-            <MacroRing label="Fat" value={totalFat} goal={DEFAULT_GOALS.fat} color={colors.fat} unit="g" size={72} />
+            <MacroRing label="Protein" value={totalProtein} goal={goals.protein} color={colors.protein} unit="g" size={72} />
+            <MacroRing label="Carbs" value={totalCarbs} goal={goals.carbs} color={colors.carbs} unit="g" size={72} />
+            <MacroRing label="Fat" value={totalFat} goal={goals.fat} color={colors.fat} unit="g" size={72} />
           </View>
         </View>
       </View>

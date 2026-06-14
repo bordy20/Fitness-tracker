@@ -9,6 +9,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  administration: write
 
 concurrency:
   group: pages
@@ -26,8 +27,10 @@ jobs:
         with:
           ref: gh-pages
 
-      - name: Configure Pages
+      - name: Configure and enable Pages
         uses: actions/configure-pages@v4
+        with:
+          enablement: true
 
       - name: Upload static files
         uses: actions/upload-pages-artifact@v3

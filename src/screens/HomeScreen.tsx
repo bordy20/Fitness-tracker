@@ -15,7 +15,7 @@ import { MacroRing } from '../components/MacroRing';
 import { ProgressBar } from '../components/ProgressBar';
 import { FoodLogItem } from '../components/FoodLogItem';
 import { ExerciseLogItem } from '../components/ExerciseLogItem';
-import { getTodayLog, removeFoodEntry, removeExerciseEntry } from '../services/storageService';
+import { getTodayLog, removeFoodEntry, removeExerciseEntry, updateWater } from '../services/storageService';
 import { DailyLog } from '../types';
 import { colors, spacing, borderRadius, typography } from '../theme';
 
@@ -46,6 +46,15 @@ export function HomeScreen() {
   const handleDeleteExercise = async (id: string) => {
     const updated = await removeExerciseEntry(id);
     setLog(updated);
+  };
+
+  const handleWaterCup = async (cupIndex: number) => {
+    if (!log) return;
+    const filled = Math.floor(log.waterIntake / 312);
+    const newFilled = filled === cupIndex + 1 ? cupIndex : cupIndex + 1;
+    const newAmount = newFilled * 312;
+    await updateWater(newAmount);
+    setLog({ ...log, waterIntake: newAmount });
   };
 
   if (!log) return (
@@ -151,10 +160,12 @@ export function HomeScreen() {
             {(log.waterIntake / 1000).toFixed(1)}L / {(log.waterGoal / 1000).toFixed(1)}L
           </Text>
         </View>
+        <Text style={styles.waterHint}>Tap a cup to log water (each = 312ml)</Text>
         <View style={styles.waterCups}>
           {Array.from({ length: 8 }).map((_, i) => (
-            <View
+            <TouchableOpacity
               key={i}
+              onPress={() => handleWaterCup(i)}
               style={[
                 styles.waterCup,
                 { backgroundColor: i < Math.floor(log.waterIntake / 312) ? colors.accentBlue : colors.border }
@@ -232,6 +243,7 @@ const styles = StyleSheet.create({
   waterHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   waterTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   waterValue: { ...typography.captionBold, color: colors.accentBlue },
+  waterHint: { ...typography.caption, color: colors.textMuted },
   waterCups: { flexDirection: 'row', gap: 6 },
   waterCup: { flex: 1, height: 28, borderRadius: borderRadius.sm },
   section: { marginHorizontal: spacing.md, marginTop: spacing.md, gap: spacing.sm },

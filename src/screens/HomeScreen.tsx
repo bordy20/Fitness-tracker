@@ -6,6 +6,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,8 +17,8 @@ import { MacroRing } from '../components/MacroRing';
 import { ProgressBar } from '../components/ProgressBar';
 import { FoodLogItem } from '../components/FoodLogItem';
 import { ExerciseLogItem } from '../components/ExerciseLogItem';
-import { getTodayLog, removeFoodEntry, removeExerciseEntry, updateWater } from '../services/storageService';
-import { DailyLog } from '../types';
+import { getTodayLog, removeFoodEntry, removeExerciseEntry, updateWater, updateFoodEntry } from '../services/storageService';
+import { DailyLog, FoodEntry } from '../types';
 import { colors, spacing, borderRadius, typography } from '../theme';
 
 const DEFAULT_GOALS = { calories: 2000, protein: 150, carbs: 250, fat: 65 };
@@ -24,6 +26,13 @@ const DEFAULT_GOALS = { calories: 2000, protein: 150, carbs: 250, fat: 65 };
 export function HomeScreen() {
   const [log, setLog] = useState<DailyLog | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [editingFood, setEditingFood] = useState<FoodEntry | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editCalories, setEditCalories] = useState('');
+  const [editProtein, setEditProtein] = useState('');
+  const [editCarbs, setEditCarbs] = useState('');
+  const [editFat, setEditFat] = useState('');
+  const [editMealType, setEditMealType] = useState<FoodEntry['mealType']>('lunch');
 
   const loadLog = useCallback(async () => {
     const data = await getTodayLog();
@@ -46,6 +55,33 @@ export function HomeScreen() {
   const handleDeleteExercise = async (id: string) => {
     const updated = await removeExerciseEntry(id);
     setLog(updated);
+  };
+
+  const handleEditFood = (entry: FoodEntry) => {
+    setEditingFood(entry);
+    setEditName(entry.name);
+    setEditCalories(String(entry.macros.calories));
+    setEditProtein(String(entry.macros.protein));
+    setEditCarbs(String(entry.macros.carbs));
+    setEditFat(String(entry.macros.fat));
+    setEditMealType(entry.mealType);
+  };
+
+  const handleSaveFood = async () => {
+    if (!editingFood) return;
+    const updated = await updateFoodEntry(editingFood.id, {
+      name: editName.trim() || editingFood.name,
+      mealType: editMealType,
+      macros: {
+        ...editingFood.macros,
+        calories: parseFloat(editCalories) || editingFood.macros.calories,
+        protein: parseFloat(editProtein) || editingFood.macros.protein,
+        carbs: parseFloat(editCarbs) || editingFood.macros.carbs,
+        fat: parseFloat(editFat) || editingFood.macros.fat,
+      },
+    });
+    setLog(updated);
+    setEditingFood(null);
   };
 
   const handleWaterCup = async (cupIndex: number) => {
@@ -75,6 +111,7 @@ export function HomeScreen() {
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
+    <View style={styles.root}>
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
@@ -187,7 +224,7 @@ export function HomeScreen() {
         ) : (
           <View style={styles.list}>
             {log.foods.map(f => (
-              <FoodLogItem key={f.id} entry={f} onDelete={handleDeleteFood} />
+              <FoodLogItem key={f.id} entry={f} onDelete={handleDeleteFood} onEdit={handleEditFood} />
             ))}
           </View>
         )}
@@ -211,11 +248,72 @@ export function HomeScreen() {
         )}
       </View>
     </ScrollView>
+
+      {/* Food Edit Modal */}
+      <Modal visible={!!editingFood} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Food Entry</Text>
+              <TouchableOpacity onPress={() => setEditingFood(null)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Name</Text>
+              <TextInput style={styles.input} value={editName} onChangeText={setEditName} placeholderTextColor={colors.textMuted} />
+            </View>
+
+            <Text style={styles.fieldLabel}>Meal Type</Text>
+            <View style={styles.mealTypeRow}>
+              {(['breakfast', 'lunch', 'dinner', 'snack'] as FoodEntry['mealType'][]).map(m => (
+                <TouchableOpacity
+                  key={m}
+                  style={[styles.mealTypeBtn, editMealType === m && styles.mealTypeBtnActive]}
+                  onPress={() => setEditMealType(m)}
+                >
+                  <Text style={[styles.mealTypeBtnText, editMealType === m && { color: colors.primary }]}>
+                    {m.charAt(0).toUpperCase() + m.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.fieldLabel}>Macros</Text>
+            <View style={styles.macroRow}>
+              {[
+                { label: 'Calories', value: editCalories, set: setEditCalories },
+                { label: 'Protein g', value: editProtein, set: setEditProtein },
+                { label: 'Carbs g', value: editCarbs, set: setEditCarbs },
+                { label: 'Fat g', value: editFat, set: setEditFat },
+              ].map(({ label, value, set }) => (
+                <View key={label} style={styles.macroField}>
+                  <Text style={styles.macroLabel}>{label}</Text>
+                  <TextInput
+                    style={styles.macroInput}
+                    value={value}
+                    onChangeText={set}
+                    keyboardType="decimal-pad"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </View>
+              ))}
+            </View>
+
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveFood}>
+              <Text style={styles.saveBtnText}>Save Changes</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.background },
+  root: { flex: 1, backgroundColor: colors.background },
+  scroll: { flex: 1 },
   content: { paddingBottom: 100 },
   loading: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' },
   loadingText: { color: colors.textSecondary },
@@ -251,4 +349,21 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: spacing.xl, gap: spacing.sm },
   emptyText: { ...typography.body, color: colors.textSecondary },
   emptySubtext: { ...typography.caption, color: colors.textMuted },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: colors.surface, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, padding: spacing.lg, gap: spacing.md },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modalTitle: { ...typography.h2, color: colors.text },
+  field: { gap: 4 },
+  fieldLabel: { ...typography.captionBold, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  input: { backgroundColor: colors.surfaceElevated, borderRadius: borderRadius.md, padding: spacing.md, color: colors.text, ...typography.body, borderWidth: 1, borderColor: colors.border },
+  mealTypeRow: { flexDirection: 'row', gap: spacing.xs },
+  mealTypeBtn: { flex: 1, paddingVertical: spacing.sm, backgroundColor: colors.surfaceElevated, borderRadius: borderRadius.md, alignItems: 'center', borderWidth: 1, borderColor: 'transparent' },
+  mealTypeBtnActive: { borderColor: colors.primary, backgroundColor: colors.primary + '20' },
+  mealTypeBtnText: { ...typography.caption, color: colors.textSecondary },
+  macroRow: { flexDirection: 'row', gap: spacing.sm },
+  macroField: { flex: 1, gap: 4, alignItems: 'center' },
+  macroLabel: { ...typography.caption, color: colors.textSecondary },
+  macroInput: { width: '100%', backgroundColor: colors.surfaceElevated, borderRadius: borderRadius.md, padding: spacing.sm, color: colors.text, textAlign: 'center', borderWidth: 1, borderColor: colors.border },
+  saveBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.lg, padding: spacing.md, alignItems: 'center' },
+  saveBtnText: { ...typography.bodyBold, color: colors.text },
 });

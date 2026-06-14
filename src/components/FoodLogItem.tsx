@@ -7,9 +7,10 @@ import { colors, typography, borderRadius, spacing } from '../theme';
 interface Props {
   entry: FoodEntry;
   onDelete: (id: string) => void;
+  onEdit?: (entry: FoodEntry) => void;
 }
 
-export function FoodLogItem({ entry, onDelete }: Props) {
+export function FoodLogItem({ entry, onDelete, onEdit }: Props) {
   const mealColors = {
     breakfast: colors.accentOrange,
     lunch: colors.accent,
@@ -25,9 +26,16 @@ export function FoodLogItem({ entry, onDelete }: Props) {
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.name} numberOfLines={1}>{entry.name}</Text>
-          <TouchableOpacity onPress={() => onDelete(entry.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
+          <View style={styles.actions}>
+            {onEdit && (
+              <TouchableOpacity onPress={() => onEdit(entry)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="pencil-outline" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={() => onDelete(entry.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={[
           styles.mealBadge,
@@ -68,21 +76,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     alignItems: 'center',
   },
-  image: {
-    width: 52,
-    height: 52,
-    borderRadius: borderRadius.sm,
-  },
+  image: { width: 52, height: 52, borderRadius: borderRadius.sm },
   content: { flex: 1, gap: 4 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   name: { ...typography.bodyBold, color: colors.text, flex: 1, marginRight: 8 },
-  mealBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-  },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  mealBadge: { alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 2, borderRadius: borderRadius.sm, borderWidth: 1 },
   mealText: { ...typography.captionBold },
   macros: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
   macroValue: { ...typography.caption },

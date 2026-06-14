@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, Platform, TextInput, TouchableOpacity } from 'react-native';
+import { Toast } from '../components/Toast';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +19,14 @@ export function StepsScreen() {
   const [isPedometerAvailable, setIsPedometerAvailable] = useState(false);
   const [recentLogs, setRecentLogs] = useState<DailyLog[]>([]);
   const [manualInput, setManualInput] = useState('');
+  const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (message: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ visible: true, message });
+    toastTimer.current = setTimeout(() => setToast(t => ({ ...t, visible: false })), 2500);
+  };
 
   useEffect(() => {
     let subscription: { remove: () => void } | null = null;
@@ -67,6 +76,8 @@ export function StepsScreen() {
   const maxSteps = Math.max(...recentLogs.map(l => l.steps), 1);
 
   return (
+    <View style={{ flex: 1 }}>
+    <Toast visible={toast.visible} message={toast.message} />
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={styles.title}>Steps</Text>
@@ -110,6 +121,7 @@ export function StepsScreen() {
                   setSteps(n);
                   await updateSteps(n);
                   setManualInput('');
+                  showToast(`Steps saved: ${n.toLocaleString()}`);
                 }
               }}
             >
@@ -193,6 +205,7 @@ export function StepsScreen() {
         ))}
       </View>
     </ScrollView>
+    </View>
   );
 }
 

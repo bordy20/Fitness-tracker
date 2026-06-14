@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { analyzeFoodImage, FoodAnalysisResult } from '../services/aiService';
 import { addFoodEntry, getSettings } from '../services/storageService';
 import { FoodEntry } from '../types';
 import { colors, spacing, borderRadius, typography } from '../theme';
+import { Toast } from '../components/Toast';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -30,6 +31,14 @@ export function FoodScanScreen() {
   const [apiKeyModal, setApiKeyModal] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const webFileRef = useRef<HTMLInputElement | null>(null);
+  const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((message: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ visible: true, message });
+    toastTimer.current = setTimeout(() => setToast(t => ({ ...t, visible: false })), 2500);
+  }, []);
 
   const handleWebFilePick = (useCamera = false) => {
     if (Platform.OS !== 'web') return;
@@ -120,9 +129,8 @@ export function FoodScanScreen() {
       mealType,
     };
     await addFoodEntry(entry);
-    Alert.alert('Saved!', `${result.name} added to today's log`, [
-      { text: 'OK', onPress: () => { setMode('idle'); setResult(null); setImageUri(null); } },
-    ]);
+    showToast(`${result.name} added to log!`);
+    setTimeout(() => { setMode('idle'); setResult(null); setImageUri(null); }, 1500);
   };
 
   const handleOpenCamera = async () => {
@@ -170,6 +178,8 @@ export function FoodScanScreen() {
   if (mode === 'result' && result) {
     const healthColor = result.healthScore >= 7 ? colors.accent : result.healthScore >= 4 ? colors.warning : colors.error;
     return (
+      <View style={{ flex: 1 }}>
+      <Toast visible={toast.visible} message={toast.message} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {imageUri && <Image source={{ uri: imageUri }} style={styles.resultImage} />}
         <LinearGradient colors={['transparent', colors.background]} style={styles.imageFade} />
@@ -281,12 +291,14 @@ export function FoodScanScreen() {
           </View>
         </View>
       </ScrollView>
+      </View>
     );
   }
 
   // Idle state
   return (
     <View style={styles.idle}>
+      <Toast visible={toast.visible} message={toast.message} />
       <Modal visible={apiKeyModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>

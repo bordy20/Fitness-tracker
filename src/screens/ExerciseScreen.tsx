@@ -16,6 +16,7 @@ import { ExerciseLogItem } from '../components/ExerciseLogItem';
 import { getTodayLog, addExerciseEntry, removeExerciseEntry, updateExerciseEntry } from '../services/storageService';
 import { ExerciseEntry, ExerciseSet } from '../types';
 import { colors, spacing, borderRadius, typography } from '../theme';
+import { Toast } from '../components/Toast';
 
 type Category = 'strength' | 'cardio' | 'flexibility' | 'sports';
 
@@ -57,6 +58,14 @@ const categoryColors: Record<Category, string> = {
 
 export function ExerciseScreen() {
   const [exercises, setExercises] = useState<ExerciseEntry[]>([]);
+  const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
+  const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (message: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ visible: true, message });
+    toastTimer.current = setTimeout(() => setToast(t => ({ ...t, visible: false })), 2500);
+  };
   const [modal, setModal] = useState(false);
   const [editingEntry, setEditingEntry] = useState<ExerciseEntry | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category>('strength');
@@ -128,6 +137,7 @@ export function ExerciseScreen() {
       setExercises(log.exercises);
     }
     closeModal();
+    showToast(editingEntry ? 'Exercise updated' : `${preset.name} logged!`);
   };
 
   const handleAddCustom = async () => {
@@ -155,6 +165,7 @@ export function ExerciseScreen() {
       setExercises(log.exercises);
     }
     closeModal();
+    showToast(editingEntry ? 'Exercise updated' : `${customName.trim()} logged!`);
   };
 
   const handleDelete = async (id: string) => {
@@ -164,6 +175,7 @@ export function ExerciseScreen() {
 
   return (
     <View style={styles.container}>
+      <Toast visible={toast.visible} message={toast.message} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.header}>

@@ -10,7 +10,9 @@ import {
   Image,
   Modal,
   Platform,
+  Animated,
 } from 'react-native';
+import { Toast } from '../components/Toast';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -95,6 +97,13 @@ export function ProfileScreen({ user, onSignOut }: Props = {}) {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [settings, setSettings] = useState<AppSettings>({ claudeApiKey: '', openaiApiKey: '', geminiApiKey: '', groqApiKey: '', units: 'metric', theme: 'dark' });
   const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({});
+  const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
+  const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = (message: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ visible: true, message });
+    toastTimer.current = setTimeout(() => setToast(t => ({ ...t, visible: false })), 2500);
+  };
   const [wizardVisible, setWizardVisible] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
   const [wizard, setWizard] = useState<WizardState>({
@@ -115,7 +124,7 @@ export function ProfileScreen({ user, onSignOut }: Props = {}) {
   const handleSave = async () => {
     await saveUserProfile(profile);
     await saveSettings(settings);
-    Alert.alert('Saved', 'Profile and settings saved successfully');
+    showToast('Profile saved successfully!');
   };
 
   const updateProfile = (key: keyof UserProfile, value: any) =>
@@ -199,12 +208,14 @@ export function ProfileScreen({ user, onSignOut }: Props = {}) {
       goals: { ...prev.goals, calories: recs.calories, protein: recs.protein, carbs: recs.carbs, fat: recs.fat },
     }));
     setWizardVisible(false);
-    Alert.alert('Goals Updated!', `Daily target set to ${recs.calories} kcal/day`);
+    showToast(`Goals set: ${recs.calories} kcal/day`);
   };
 
   const displayPhoto = profile.photoURL || user?.photoURL;
 
   return (
+    <View style={{ flex: 1 }}>
+    <Toast visible={toast.visible} message={toast.message} />
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Profile & Settings</Text>
 
@@ -421,6 +432,7 @@ export function ProfileScreen({ user, onSignOut }: Props = {}) {
         </View>
       </Modal>
     </ScrollView>
+    </View>
   );
 }
 

@@ -20,6 +20,7 @@ import { ExerciseLogItem } from '../components/ExerciseLogItem';
 import { getTodayLog, removeFoodEntry, removeExerciseEntry, updateWater, updateFoodEntry, updateExerciseEntry } from '../services/storageService';
 import { DailyLog, FoodEntry, ExerciseEntry } from '../types';
 import { colors, spacing, borderRadius, typography } from '../theme';
+import { Toast } from '../components/Toast';
 
 const DEFAULT_GOALS = { calories: 2000, protein: 150, carbs: 250, fat: 65 };
 
@@ -38,6 +39,14 @@ export function HomeScreen() {
   const [exSets, setExSets] = useState('');
   const [exReps, setExReps] = useState('');
   const [exWeight, setExWeight] = useState('');
+  const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
+  const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (message: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ visible: true, message });
+    toastTimer.current = setTimeout(() => setToast(t => ({ ...t, visible: false })), 2500);
+  };
 
   const loadLog = useCallback(async () => {
     const data = await getTodayLog();
@@ -87,6 +96,7 @@ export function HomeScreen() {
     });
     setLog(updated);
     setEditingFood(null);
+    showToast('Food entry updated');
   };
 
   const handleEditExercise = (entry: ExerciseEntry) => {
@@ -119,6 +129,7 @@ export function HomeScreen() {
     });
     setLog(updated);
     setEditingExercise(null);
+    showToast('Exercise updated');
   };
 
   const handleWaterCup = async (cupIndex: number) => {
@@ -287,6 +298,8 @@ export function HomeScreen() {
     </ScrollView>
 
       {/* Food Edit Modal */}
+      <Toast visible={toast.visible} message={toast.message} />
+
       <Modal visible={!!editingFood} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>

@@ -34,7 +34,7 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "publicPath": "/fitness-tracker/"
+      "publicPath": "/Fitness-tracker/"
     },
     "plugins": [
       "expo-camera",

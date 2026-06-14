@@ -17,8 +17,8 @@ import { MacroRing } from '../components/MacroRing';
 import { ProgressBar } from '../components/ProgressBar';
 import { FoodLogItem } from '../components/FoodLogItem';
 import { ExerciseLogItem } from '../components/ExerciseLogItem';
-import { getTodayLog, removeFoodEntry, removeExerciseEntry, updateWater, updateFoodEntry } from '../services/storageService';
-import { DailyLog, FoodEntry } from '../types';
+import { getTodayLog, removeFoodEntry, removeExerciseEntry, updateWater, updateFoodEntry, updateExerciseEntry } from '../services/storageService';
+import { DailyLog, FoodEntry, ExerciseEntry } from '../types';
 import { colors, spacing, borderRadius, typography } from '../theme';
 
 const DEFAULT_GOALS = { calories: 2000, protein: 150, carbs: 250, fat: 65 };
@@ -33,6 +33,11 @@ export function HomeScreen() {
   const [editCarbs, setEditCarbs] = useState('');
   const [editFat, setEditFat] = useState('');
   const [editMealType, setEditMealType] = useState<FoodEntry['mealType']>('lunch');
+  const [editingExercise, setEditingExercise] = useState<ExerciseEntry | null>(null);
+  const [exDuration, setExDuration] = useState('');
+  const [exSets, setExSets] = useState('');
+  const [exReps, setExReps] = useState('');
+  const [exWeight, setExWeight] = useState('');
 
   const loadLog = useCallback(async () => {
     const data = await getTodayLog();
@@ -82,6 +87,38 @@ export function HomeScreen() {
     });
     setLog(updated);
     setEditingFood(null);
+  };
+
+  const handleEditExercise = (entry: ExerciseEntry) => {
+    setEditingExercise(entry);
+    setExDuration(String(entry.duration));
+    const first = entry.sets?.[0];
+    setExSets(entry.sets ? String(entry.sets.length) : '');
+    setExReps(first?.reps ? String(first.reps) : '');
+    setExWeight(first?.weight ? String(first.weight) : '');
+  };
+
+  const handleSaveExercise = async () => {
+    if (!editingExercise) return;
+    const dur = parseInt(exDuration) || editingExercise.duration;
+    const setsCount = parseInt(exSets) || (editingExercise.sets?.length ?? 0);
+    const repsVal = parseInt(exReps) || editingExercise.sets?.[0]?.reps;
+    const weightVal = exWeight ? parseFloat(exWeight) : editingExercise.sets?.[0]?.weight;
+    const newSets = editingExercise.sets && setsCount > 0
+      ? Array.from({ length: setsCount }, (_, i) => ({
+          setNumber: i + 1,
+          reps: repsVal,
+          weight: weightVal,
+        }))
+      : editingExercise.sets;
+    const calPerMin = editingExercise.caloriesBurned / editingExercise.duration;
+    const updated = await updateExerciseEntry(editingExercise.id, {
+      duration: dur,
+      caloriesBurned: Math.round(calPerMin * dur),
+      sets: newSets,
+    });
+    setLog(updated);
+    setEditingExercise(null);
   };
 
   const handleWaterCup = async (cupIndex: number) => {
@@ -242,7 +279,7 @@ export function HomeScreen() {
         ) : (
           <View style={styles.list}>
             {log.exercises.map(e => (
-              <ExerciseLogItem key={e.id} entry={e} onDelete={handleDeleteExercise} />
+              <ExerciseLogItem key={e.id} entry={e} onDelete={handleDeleteExercise} onEdit={handleEditExercise} />
             ))}
           </View>
         )}
@@ -307,6 +344,51 @@ export function HomeScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Exercise Edit Modal */}
+      <Modal visible={!!editingExercise} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Exercise</Text>
+              <TouchableOpacity onPress={() => setEditingExercise(null)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {editingExercise && (
+              <Text style={styles.exName}>{editingExercise.name}</Text>
+            )}
+
+            <View style={styles.macroRow}>
+              <View style={styles.macroField}>
+                <Text style={styles.macroLabel}>Duration (min)</Text>
+                <TextInput style={styles.macroInput} value={exDuration} onChangeText={setExDuration} keyboardType="numeric" placeholderTextColor={colors.textMuted} />
+              </View>
+              {editingExercise?.sets && editingExercise.sets.length > 0 && (
+                <>
+                  <View style={styles.macroField}>
+                    <Text style={styles.macroLabel}>Sets</Text>
+                    <TextInput style={styles.macroInput} value={exSets} onChangeText={setExSets} keyboardType="numeric" placeholderTextColor={colors.textMuted} />
+                  </View>
+                  <View style={styles.macroField}>
+                    <Text style={styles.macroLabel}>Reps</Text>
+                    <TextInput style={styles.macroInput} value={exReps} onChangeText={setExReps} keyboardType="numeric" placeholderTextColor={colors.textMuted} />
+                  </View>
+                  <View style={styles.macroField}>
+                    <Text style={styles.macroLabel}>Weight (kg)</Text>
+                    <TextInput style={styles.macroInput} value={exWeight} onChangeText={setExWeight} keyboardType="decimal-pad" placeholder="opt" placeholderTextColor={colors.textMuted} />
+                  </View>
+                </>
+              )}
+            </View>
+
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveExercise}>
+              <Text style={styles.saveBtnText}>Save Changes</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -364,6 +446,7 @@ const styles = StyleSheet.create({
   macroField: { flex: 1, gap: 4, alignItems: 'center' },
   macroLabel: { ...typography.caption, color: colors.textSecondary },
   macroInput: { width: '100%', backgroundColor: colors.surfaceElevated, borderRadius: borderRadius.md, padding: spacing.sm, color: colors.text, textAlign: 'center', borderWidth: 1, borderColor: colors.border },
+  exName: { ...typography.bodyBold, color: colors.textSecondary },
   saveBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.lg, padding: spacing.md, alignItems: 'center' },
   saveBtnText: { ...typography.bodyBold, color: colors.text },
 });

@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 import { MacroNutrients } from '../types';
 
 export interface FoodAnalysisResult {
@@ -20,12 +20,28 @@ export async function analyzeFoodImage(
   const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
 
   let base64Image: string;
-  if (imageUri.startsWith('file://') || imageUri.startsWith('/')) {
-    base64Image = await FileSystem.readAsStringAsync(imageUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+  if (Platform.OS === 'web') {
+    if (imageUri.startsWith('data:')) {
+      base64Image = imageUri.replace(/^data:image\/\w+;base64,/, '');
+    } else {
+      const res = await fetch(imageUri);
+      const blob = await res.blob();
+      base64Image = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).replace(/^data:image\/\w+;base64,/, ''));
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
   } else {
-    base64Image = imageUri.replace(/^data:image\/\w+;base64,/, '');
+    const FileSystem = await import('expo-file-system');
+    if (imageUri.startsWith('file://') || imageUri.startsWith('/')) {
+      base64Image = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    } else {
+      base64Image = imageUri.replace(/^data:image\/\w+;base64,/, '');
+    }
   }
 
   const prompt = `You are a professional nutritionist and food recognition AI. Analyze this food image and provide detailed nutritional information.

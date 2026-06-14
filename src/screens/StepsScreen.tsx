@@ -22,6 +22,11 @@ export function StepsScreen() {
   useEffect(() => {
     let subscription: { remove: () => void } | null = null;
 
+    if (Platform.OS === 'web') {
+      getTodayLog().then(log => setSteps(log.steps));
+      return;
+    }
+
     (async () => {
       const { status } = await Pedometer.requestPermissionsAsync();
       if (status !== 'granted') {

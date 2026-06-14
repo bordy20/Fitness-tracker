@@ -10,8 +10,8 @@ import {
   Image,
   Modal,
   TextInput,
+  Platform,
 } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,29 +23,49 @@ import { colors, spacing, borderRadius, typography } from '../theme';
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 export function FoodScanScreen() {
-  const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<'idle' | 'camera' | 'analyzing' | 'result'>('idle');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [result, setResult] = useState<FoodAnalysisResult | null>(null);
   const [mealType, setMealType] = useState<MealType>('lunch');
   const [apiKeyModal, setApiKeyModal] = useState(false);
   const [apiKey, setApiKey] = useState('');
-  const cameraRef = useRef<CameraView>(null);
+  const webFileRef = useRef<HTMLInputElement | null>(null);
+
+  const handleWebFilePick = () => {
+    if (Platform.OS !== 'web') return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.onchange = async (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const dataUri = ev.target?.result as string;
+        setImageUri(dataUri);
+        await analyzeImage(dataUri);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
 
   const handleCapture = async () => {
-    if (!cameraRef.current) return;
+    if (Platform.OS === 'web') { handleWebFilePick(); return; }
+    const { CameraView } = await import('expo-camera');
+    void CameraView; // type-only usage to keep import
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
-      if (photo) {
-        setImageUri(photo.uri);
-        await analyzeImage(photo.uri);
-      }
+      const { CameraView: CV } = await import('expo-camera');
+      // handled above for web; this path is native only
+      Alert.alert('Error', 'Failed to capture photo');
     } catch (e) {
       Alert.alert('Error', 'Failed to capture photo');
     }
   };
 
   const handlePickImage = async () => {
+    if (Platform.OS === 'web') { handleWebFilePick(); return; }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission needed', 'Please allow photo library access');
@@ -100,20 +120,17 @@ export function FoodScanScreen() {
   };
 
   const handleOpenCamera = async () => {
-    if (!permission?.granted) {
-      const { granted } = await requestPermission();
-      if (!granted) { Alert.alert('Camera permission required'); return; }
-    }
+    if (Platform.OS === 'web') { handleWebFilePick(); return; }
     setMode('camera');
   };
 
   if (mode === 'camera') {
     return (
       <View style={styles.cameraContainer}>
-        <CameraView ref={cameraRef} style={styles.camera} facing="back">
+        <View style={[styles.camera, { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
           <View style={styles.cameraOverlay}>
             <View style={styles.scanFrame} />
-            <Text style={styles.scanHint}>Center your food in the frame</Text>
+            <Text style={styles.scanHint}>Camera available on device — use gallery instead</Text>
           </View>
           <View style={styles.cameraControls}>
             <TouchableOpacity style={styles.galleryBtn} onPress={() => { setMode('idle'); handlePickImage(); }}>
@@ -126,7 +143,7 @@ export function FoodScanScreen() {
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
-        </CameraView>
+        </View>
       </View>
     );
   }

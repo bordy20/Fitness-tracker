@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text, StyleSheet, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { FoodScanScreen } from './src/screens/FoodScanScreen';
@@ -11,6 +11,9 @@ import { ExerciseScreen } from './src/screens/ExerciseScreen';
 import { StepsScreen } from './src/screens/StepsScreen';
 import { HistoryScreen } from './src/screens/HistoryScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import { LoginScreen } from './src/screens/LoginScreen';
+import { onAuthChange, AuthUser } from './src/services/authService';
+import { isFirebaseConfigured } from './src/config/firebase';
 import { colors, borderRadius } from './src/theme';
 
 const Tab = createBottomTabNavigator();
@@ -46,47 +49,72 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
 }
 
 export default function App() {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      // Firebase not set up yet — skip auth, show app directly
+      setAuthLoading(false);
+      return;
+    }
+    const unsub = onAuthChange(u => {
+      setUser(u);
+      setAuthLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  const mainApp = (
+    <NavigationContainer theme={{ ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background, card: colors.surface, border: colors.border, primary: colors.primary, text: colors.text, notification: colors.secondary } }}>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarStyle: styles.tabBar,
+          tabBarActiveTintColor: TAB_ICONS[route.name]?.color ?? colors.primary,
+          tabBarInactiveTintColor: colors.textMuted,
+          tabBarLabelStyle: styles.tabBarLabel,
+          tabBarIcon: ({ focused, color, size }) => {
+            const icons = TAB_ICONS[route.name];
+            if (!icons) return null;
+            return (
+              <View style={[styles.tabIconWrapper, focused && { backgroundColor: color + '20' }]}>
+                <Ionicons name={focused ? icons.focused : icons.outline} size={size - 2} color={color} />
+              </View>
+            );
+          },
+        })}
+      >
+        <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="Scan" component={FoodScanScreen} />
+        <Tab.Screen name="Exercise" component={ExerciseScreen} />
+        <Tab.Screen name="Steps" component={StepsScreen} />
+        <Tab.Screen name="History" component={HistoryScreen} />
+        <Tab.Screen name="Profile">{() => <ProfileScreen user={user} onSignOut={() => setUser(null)} />}</Tab.Screen>
+      </Tab.Navigator>
+    </NavigationContainer>
+  );
+
   return (
     <ErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
         <StatusBar style="light" />
-        <NavigationContainer theme={{ ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background, card: colors.surface, border: colors.border, primary: colors.primary, text: colors.text, notification: colors.secondary } }}>
-          <Tab.Navigator
-            screenOptions={({ route }) => ({
-              headerShown: false,
-              tabBarStyle: styles.tabBar,
-              tabBarActiveTintColor: TAB_ICONS[route.name]?.color ?? colors.primary,
-              tabBarInactiveTintColor: colors.textMuted,
-              tabBarLabelStyle: styles.tabBarLabel,
-              tabBarIcon: ({ focused, color, size }) => {
-                const icons = TAB_ICONS[route.name];
-                if (!icons) return null;
-                return (
-                  <View style={[styles.tabIconWrapper, focused && { backgroundColor: color + '20' }]}>
-                    <Ionicons
-                      name={focused ? icons.focused : icons.outline}
-                      size={size - 2}
-                      color={color}
-                    />
-                  </View>
-                );
-              },
-            })}
-          >
-            <Tab.Screen name="Home" component={HomeScreen} />
-            <Tab.Screen name="Scan" component={FoodScanScreen} />
-            <Tab.Screen name="Exercise" component={ExerciseScreen} />
-            <Tab.Screen name="Steps" component={StepsScreen} />
-            <Tab.Screen name="History" component={HistoryScreen} />
-            <Tab.Screen name="Profile" component={ProfileScreen} />
-          </Tab.Navigator>
-        </NavigationContainer>
+        {authLoading ? (
+          <View style={styles.splash}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : isFirebaseConfigured && !user ? (
+          <LoginScreen onLogin={setUser} />
+        ) : (
+          mainApp
+        )}
       </GestureHandlerRootView>
     </ErrorBoundary>
   );
 }
 
 const styles = StyleSheet.create({
+  splash: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   tabBar: {
     backgroundColor: colors.surface,
     borderTopColor: colors.border,
@@ -96,16 +124,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     position: 'absolute',
   },
-  tabBarLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  tabIconWrapper: {
-    width: 36,
-    height: 30,
-    borderRadius: borderRadius.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  tabBarLabel: { fontSize: 10, fontWeight: '600', marginTop: 2 },
+  tabIconWrapper: { width: 36, height: 30, borderRadius: borderRadius.sm, justifyContent: 'center', alignItems: 'center' },
 });

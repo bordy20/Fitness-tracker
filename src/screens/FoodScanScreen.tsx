@@ -31,13 +31,18 @@ export function FoodScanScreen() {
   const [apiKey, setApiKey] = useState('');
   const webFileRef = useRef<HTMLInputElement | null>(null);
 
-  const handleWebFilePick = () => {
+  const handleWebFilePick = (useCamera = false) => {
     if (Platform.OS !== 'web') return;
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.capture = 'environment';
+    if (useCamera) input.setAttribute('capture', 'environment');
+    // Must be in the DOM for iOS Safari to allow programmatic .click()
+    input.style.cssText = 'position:fixed;top:-200px;left:-200px;opacity:0;';
+    document.body.appendChild(input);
+    const cleanup = () => { if (document.body.contains(input)) document.body.removeChild(input); };
     input.onchange = async (e: Event) => {
+      cleanup();
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       const reader = new FileReader();
@@ -48,11 +53,12 @@ export function FoodScanScreen() {
       };
       reader.readAsDataURL(file);
     };
+    input.addEventListener('cancel', cleanup);
     input.click();
   };
 
   const handleCapture = async () => {
-    if (Platform.OS === 'web') { handleWebFilePick(); return; }
+    if (Platform.OS === 'web') { handleWebFilePick(true); return; }
     const { CameraView } = await import('expo-camera');
     void CameraView; // type-only usage to keep import
     try {
@@ -65,7 +71,7 @@ export function FoodScanScreen() {
   };
 
   const handlePickImage = async () => {
-    if (Platform.OS === 'web') { handleWebFilePick(); return; }
+    if (Platform.OS === 'web') { handleWebFilePick(false); return; }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission needed', 'Please allow photo library access');
@@ -120,7 +126,7 @@ export function FoodScanScreen() {
   };
 
   const handleOpenCamera = async () => {
-    if (Platform.OS === 'web') { handleWebFilePick(); return; }
+    if (Platform.OS === 'web') { handleWebFilePick(true); return; }
     setMode('camera');
   };
 

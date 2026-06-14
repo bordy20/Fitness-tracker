@@ -36,6 +36,9 @@
       "favicon": "./assets/favicon.png",
       "publicPath": "/Fitness-tracker/"
     },
+    "experiments": {
+      "baseUrl": "/Fitness-tracker"
+    },
     "plugins": [
       "expo-camera",
       "expo-image-picker",

@@ -8,11 +8,14 @@ import {
   TouchableOpacity,
   Alert,
   Switch,
+  Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getUserProfile, saveUserProfile, getSettings, saveSettings } from '../services/storageService';
+import { signOut } from '../services/authService';
+import { AuthUser } from '../services/authService';
 import { UserProfile, AppSettings } from '../types';
 import { colors, spacing, borderRadius, typography } from '../theme';
 
@@ -26,15 +29,28 @@ const DEFAULT_PROFILE: UserProfile = {
   goals: { calories: 2000, protein: 150, carbs: 250, fat: 65, steps: 10000, water: 2500 },
 };
 
-export function ProfileScreen() {
+interface Props {
+  user?: AuthUser | null;
+  onSignOut?: () => void;
+}
+
+export function ProfileScreen({ user, onSignOut }: Props = {}) {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [settings, setSettings] = useState<AppSettings>({ claudeApiKey: '', units: 'metric', theme: 'dark' });
   const [showApiKey, setShowApiKey] = useState(false);
 
   useFocusEffect(useCallback(() => {
-    getUserProfile().then(p => { if (p) setProfile(p); });
+    getUserProfile().then(p => {
+      if (p) setProfile(p);
+      else if (user?.displayName) setProfile(prev => ({ ...prev, name: user.displayName ?? '' }));
+    });
     getSettings().then(setSettings);
-  }, []));
+  }, [user]));
+
+  const handleSignOut = async () => {
+    await signOut();
+    onSignOut?.();
+  };
 
   const handleSave = async () => {
     await saveUserProfile(profile);
@@ -59,10 +75,25 @@ export function ProfileScreen() {
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Profile & Settings</Text>
 
-      {/* Avatar */}
-      <LinearGradient colors={[colors.primary, colors.primaryLight]} style={styles.avatar}>
-        <Text style={styles.avatarText}>{profile.name ? profile.name[0].toUpperCase() : '?'}</Text>
-      </LinearGradient>
+      {/* Avatar / Account */}
+      <View style={styles.accountRow}>
+        {user?.photoURL ? (
+          <Image source={{ uri: user.photoURL }} style={styles.avatarImg} />
+        ) : (
+          <LinearGradient colors={[colors.primary, colors.primaryLight]} style={styles.avatar}>
+            <Text style={styles.avatarText}>{(user?.displayName || profile.name || '?')[0].toUpperCase()}</Text>
+          </LinearGradient>
+        )}
+        <View style={styles.accountInfo}>
+          <Text style={styles.accountName}>{user?.displayName || profile.name || 'Your Profile'}</Text>
+          {user?.email && <Text style={styles.accountEmail}>{user.email}</Text>}
+        </View>
+        {user && (
+          <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
+            <Ionicons name="log-out-outline" size={20} color={colors.error} />
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* TDEE Card */}
       <LinearGradient colors={['#2A2A4E', '#1A1A2E']} style={styles.tdeeCard}>
@@ -198,8 +229,14 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md, paddingBottom: 100, gap: spacing.lg },
   title: { ...typography.h1, color: colors.text, paddingTop: spacing.xl },
-  avatar: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', alignSelf: 'center' },
-  avatarText: { ...typography.hero, color: colors.text },
+  accountRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.md },
+  avatarImg: { width: 56, height: 56, borderRadius: 28 },
+  avatar: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { ...typography.h2, color: colors.text },
+  accountInfo: { flex: 1, gap: 2 },
+  accountName: { ...typography.bodyBold, color: colors.text },
+  accountEmail: { ...typography.caption, color: colors.textSecondary },
+  signOutBtn: { padding: spacing.sm, backgroundColor: colors.error + '15', borderRadius: borderRadius.md },
   tdeeCard: { borderRadius: borderRadius.xl, padding: spacing.lg, alignItems: 'center', gap: spacing.xs },
   tdeeLabel: { ...typography.caption, color: colors.textSecondary },
   tdeeValue: { ...typography.hero, color: colors.primary },

@@ -8,10 +8,9 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  Modal,
-  TextInput,
   Platform,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,9 +27,12 @@ export function FoodScanScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [result, setResult] = useState<FoodAnalysisResult | null>(null);
   const [mealType, setMealType] = useState<MealType>('lunch');
-  const [apiKeyModal, setApiKeyModal] = useState(false);
-  const [apiKey, setApiKey] = useState('');
+  const [claudeKey, setClaudeKey] = useState<string>('');
   const webFileRef = useRef<HTMLInputElement | null>(null);
+
+  useFocusEffect(useCallback(() => {
+    getSettings().then(s => setClaudeKey(s.claudeApiKey || ''));
+  }, []));
   const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -98,20 +100,19 @@ export function FoodScanScreen() {
   };
 
   const analyzeImage = async (uri: string) => {
-    setMode('analyzing');
-    const settings = await getSettings();
-    const key = settings.claudeApiKey || apiKey;
+    const key = claudeKey || (await getSettings()).claudeApiKey;
     if (!key) {
       setMode('idle');
-      setApiKeyModal(true);
+      Alert.alert('API Key Missing', 'Go to Profile → AI Settings and add your Claude API key.');
       return;
     }
+    setMode('analyzing');
     try {
       const analysis = await analyzeFoodImage(uri, key);
       setResult(analysis);
       setMode('result');
     } catch (e) {
-      Alert.alert('Analysis failed', 'Could not analyze the image. Please check your API key and try again.');
+      Alert.alert('Analysis failed', 'Could not analyze the image. Please check your Claude API key in Profile → AI Settings.');
       setMode('idle');
     }
   };
@@ -299,34 +300,15 @@ export function FoodScanScreen() {
   return (
     <View style={styles.idle}>
       <Toast visible={toast.visible} message={toast.message} />
-      <Modal visible={apiKeyModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Claude API Key Required</Text>
-            <Text style={styles.modalSubtext}>Enter your Anthropic API key to enable AI food analysis</Text>
-            <TextInput
-              style={styles.apiKeyInput}
-              placeholder="sk-ant-..."
-              placeholderTextColor={colors.textMuted}
-              value={apiKey}
-              onChangeText={setApiKey}
-              secureTextEntry
-            />
-            <TouchableOpacity
-              style={styles.modalBtn}
-              onPress={() => {
-                setApiKeyModal(false);
-                if (imageUri) analyzeImage(imageUri);
-              }}
-            >
-              <Text style={styles.modalBtnText}>Analyze Food</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setApiKeyModal(false)}>
-              <Text style={styles.modalCancel}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
+
+      {!claudeKey && (
+        <View style={styles.noKeyBanner}>
+          <Ionicons name="key-outline" size={18} color={colors.warning} />
+          <Text style={styles.noKeyText}>
+            Add your Claude API key in <Text style={styles.noKeyLink}>Profile → AI Settings</Text> to enable food scanning
+          </Text>
         </View>
-      </Modal>
+      )}
 
       <View style={styles.idleHeader}>
         <Text style={styles.idleTitle}>Food Scanner</Text>
@@ -452,12 +434,7 @@ const styles = StyleSheet.create({
   featuresTitle: { ...typography.bodyBold, color: colors.textSecondary },
   feature: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   featureText: { ...typography.body, color: colors.textSecondary },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
-  modalContent: { backgroundColor: colors.surface, borderRadius: borderRadius.xl, padding: spacing.xl, width: '100%', gap: spacing.md },
-  modalTitle: { ...typography.h2, color: colors.text },
-  modalSubtext: { ...typography.body, color: colors.textSecondary },
-  apiKeyInput: { backgroundColor: colors.surfaceElevated, borderRadius: borderRadius.md, padding: spacing.md, color: colors.text, ...typography.body, borderWidth: 1, borderColor: colors.border },
-  modalBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: spacing.md, alignItems: 'center' },
-  modalBtnText: { ...typography.bodyBold, color: colors.text },
-  modalCancel: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  noKeyBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, backgroundColor: colors.warning + '18', borderRadius: borderRadius.md, padding: spacing.md, marginHorizontal: spacing.lg, marginTop: spacing.md },
+  noKeyText: { ...typography.caption, color: colors.warning, flex: 1 },
+  noKeyLink: { fontWeight: '700', textDecorationLine: 'underline' },
 });

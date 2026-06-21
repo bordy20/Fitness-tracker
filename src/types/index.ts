@@ -69,6 +69,7 @@ export interface AppSettings {
   openaiApiKey: string;
   geminiApiKey: string;
   groqApiKey: string;
+  xaiApiKey: string;
   units: 'metric' | 'imperial';
   theme: 'dark' | 'light';
 }

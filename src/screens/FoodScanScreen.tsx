@@ -26,7 +26,8 @@ const PROVIDER_LABELS: Record<AIProvider, string> = {
   claude: 'Claude',
   openai: 'GPT-4o',
   gemini: 'Gemini',
-  groq: 'Groq (Llama)',
+  groq:   'Groq (Llama)',
+  xai:    'Grok (xAI)',
 };
 
 export function FoodScanScreen() {
@@ -46,6 +47,7 @@ export function FoodScanScreen() {
         ['openai', s.openaiApiKey],
         ['gemini', s.geminiApiKey],
         ['groq',   s.groqApiKey],
+        ['xai',    s.xaiApiKey],
       ] as [AIProvider, string][])
         .filter(([, k]) => k?.trim())
         .map(([provider, key]) => ({ provider, key }));

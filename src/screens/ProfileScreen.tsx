@@ -341,7 +341,8 @@ export function ProfileScreen({ user, onSignOut }: Props = {}) {
           { key: 'claudeApiKey' as const,  label: 'Claude (Anthropic)', placeholder: 'sk-ant-...',    hint: 'console.anthropic.com',  icon: '🤖' },
           { key: 'openaiApiKey' as const,  label: 'OpenAI (GPT-4)',     placeholder: 'sk-...',         hint: 'platform.openai.com',    icon: '⚡' },
           { key: 'geminiApiKey' as const,  label: 'Google Gemini',      placeholder: 'AIza...',        hint: 'aistudio.google.com',    icon: '✨' },
-          { key: 'groqApiKey'   as const,  label: 'Groq',               placeholder: 'gsk_...',        hint: 'console.groq.com',       icon: '🚀' },
+          { key: 'groqApiKey'   as const,  label: 'Groq (Llama)',       placeholder: 'gsk_...',        hint: 'console.groq.com',       icon: '🚀' },
+          { key: 'xaiApiKey'    as const,  label: 'xAI (Grok)',         placeholder: 'xai-...',        hint: 'console.x.ai',           icon: '🔮' },
         ] as { key: keyof AppSettings; label: string; placeholder: string; hint: string; icon: string }[]).map(({ key, label, placeholder, hint, icon }) => (
           <View key={key} style={styles.field}>
             <Text style={styles.fieldLabel}><Text style={styles.providerIcon}>{icon}</Text> {label}</Text>

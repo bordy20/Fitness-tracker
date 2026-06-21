@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { Platform } from 'react-native';
 import { MacroNutrients } from '../types';
 
-export type AIProvider = 'claude' | 'openai' | 'gemini' | 'groq';
+export type AIProvider = 'claude' | 'openai' | 'gemini' | 'groq' | 'xai';
 
 export interface FoodAnalysisResult {
   name: string;
@@ -145,6 +145,27 @@ async function analyzeWithGroq(base64: string, apiKey: string): Promise<FoodAnal
   return parseResult(data.choices[0].message.content);
 }
 
+async function analyzeWithXAI(base64: string, apiKey: string): Promise<FoodAnalysisResult> {
+  const res = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'grok-2-vision-latest',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } },
+          { type: 'text', text: FOOD_PROMPT },
+        ],
+      }],
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'xAI request failed');
+  return parseResult(data.choices[0].message.content);
+}
+
 export async function analyzeFoodImage(
   imageUri: string,
   apiKey: string,
@@ -155,6 +176,7 @@ export async function analyzeFoodImage(
     case 'openai': return analyzeWithOpenAI(base64, apiKey);
     case 'gemini': return analyzeWithGemini(base64, apiKey);
     case 'groq':   return analyzeWithGroq(base64, apiKey);
+    case 'xai':    return analyzeWithXAI(base64, apiKey);
     default:       return analyzeWithClaude(base64, apiKey);
   }
 }

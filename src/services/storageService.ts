@@ -96,7 +96,7 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
 }
 
 const SETTINGS_DEFAULTS: AppSettings = {
-  claudeApiKey: '', openaiApiKey: '', geminiApiKey: '', groqApiKey: '',
+  claudeApiKey: '', openaiApiKey: '', geminiApiKey: '', groqApiKey: '', xaiApiKey: '',
   units: 'metric', theme: 'dark',
 };
 

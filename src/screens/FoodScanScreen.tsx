@@ -14,7 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { analyzeFoodImage, FoodAnalysisResult } from '../services/aiService';
+import { analyzeFoodImage, FoodAnalysisResult, AIProvider } from '../services/aiService';
 import { addFoodEntry, getSettings } from '../services/storageService';
 import { FoodEntry } from '../types';
 import { colors, spacing, borderRadius, typography } from '../theme';
@@ -22,16 +22,39 @@ import { Toast } from '../components/Toast';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
+const PROVIDER_LABELS: Record<AIProvider, string> = {
+  claude: 'Claude',
+  openai: 'GPT-4o',
+  gemini: 'Gemini',
+  groq: 'Groq (Llama)',
+};
+
 export function FoodScanScreen() {
   const [mode, setMode] = useState<'idle' | 'camera' | 'analyzing' | 'result'>('idle');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [result, setResult] = useState<FoodAnalysisResult | null>(null);
   const [mealType, setMealType] = useState<MealType>('lunch');
-  const [claudeKey, setClaudeKey] = useState<string>('');
+  const [activeProvider, setActiveProvider] = useState<AIProvider | null>(null);
+  const [activeKey, setActiveKey] = useState('');
   const webFileRef = useRef<HTMLInputElement | null>(null);
 
   useFocusEffect(useCallback(() => {
-    getSettings().then(s => setClaudeKey(s.claudeApiKey || ''));
+    getSettings().then(s => {
+      const picks: [AIProvider, string][] = [
+        ['claude', s.claudeApiKey || ''],
+        ['openai', s.openaiApiKey || ''],
+        ['gemini', s.geminiApiKey || ''],
+        ['groq',   s.groqApiKey   || ''],
+      ];
+      const found = picks.find(([, key]) => key.trim() !== '');
+      if (found) {
+        setActiveProvider(found[0]);
+        setActiveKey(found[1]);
+      } else {
+        setActiveProvider(null);
+        setActiveKey('');
+      }
+    });
   }, []));
   const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -100,19 +123,18 @@ export function FoodScanScreen() {
   };
 
   const analyzeImage = async (uri: string) => {
-    const key = claudeKey || (await getSettings()).claudeApiKey;
-    if (!key) {
+    if (!activeKey || !activeProvider) {
       setMode('idle');
-      Alert.alert('API Key Missing', 'Go to Profile → AI Settings and add your Claude API key.');
+      Alert.alert('API Key Missing', 'Go to Profile → AI Settings and add an API key to enable food scanning.');
       return;
     }
     setMode('analyzing');
     try {
-      const analysis = await analyzeFoodImage(uri, key);
+      const analysis = await analyzeFoodImage(uri, activeKey, activeProvider);
       setResult(analysis);
       setMode('result');
     } catch (e) {
-      Alert.alert('Analysis failed', 'Could not analyze the image. Please check your Claude API key in Profile → AI Settings.');
+      Alert.alert('Analysis failed', `Could not analyze the image. Please check your ${PROVIDER_LABELS[activeProvider]} API key in Profile → AI Settings.`);
       setMode('idle');
     }
   };
@@ -301,12 +323,17 @@ export function FoodScanScreen() {
     <View style={styles.idle}>
       <Toast visible={toast.visible} message={toast.message} />
 
-      {!claudeKey && (
+      {!activeKey ? (
         <View style={styles.noKeyBanner}>
           <Ionicons name="key-outline" size={18} color={colors.warning} />
           <Text style={styles.noKeyText}>
-            Add your Claude API key in <Text style={styles.noKeyLink}>Profile → AI Settings</Text> to enable food scanning
+            Add an API key in <Text style={styles.noKeyLink}>Profile → AI Settings</Text> to enable food scanning
           </Text>
+        </View>
+      ) : (
+        <View style={styles.providerBadge}>
+          <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
+          <Text style={styles.providerBadgeText}>Powered by {PROVIDER_LABELS[activeProvider!]}</Text>
         </View>
       )}
 
@@ -437,4 +464,6 @@ const styles = StyleSheet.create({
   noKeyBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, backgroundColor: colors.warning + '18', borderRadius: borderRadius.md, padding: spacing.md, marginHorizontal: spacing.lg, marginTop: spacing.md },
   noKeyText: { ...typography.caption, color: colors.warning, flex: 1 },
   noKeyLink: { fontWeight: '700', textDecorationLine: 'underline' },
+  providerBadge: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start', backgroundColor: colors.primary + '18', borderRadius: borderRadius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderWidth: 1, borderColor: colors.primary + '30' },
+  providerBadgeText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
 });

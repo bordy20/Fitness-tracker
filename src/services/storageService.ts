@@ -95,10 +95,15 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
   uploadProfile(profile).catch(() => {});
 }
 
+const SETTINGS_DEFAULTS: AppSettings = {
+  claudeApiKey: '', openaiApiKey: '', geminiApiKey: '', groqApiKey: '',
+  units: 'metric', theme: 'dark',
+};
+
 export async function getSettings(): Promise<AppSettings> {
   const raw = await AsyncStorage.getItem(KEYS.SETTINGS);
-  if (raw) return JSON.parse(raw);
-  return { claudeApiKey: '', openaiApiKey: '', geminiApiKey: '', groqApiKey: '', units: 'metric', theme: 'dark' };
+  if (raw) return { ...SETTINGS_DEFAULTS, ...JSON.parse(raw) };
+  return { ...SETTINGS_DEFAULTS };
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {

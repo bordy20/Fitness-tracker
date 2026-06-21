@@ -34,26 +34,29 @@ export function FoodScanScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [result, setResult] = useState<FoodAnalysisResult | null>(null);
   const [mealType, setMealType] = useState<MealType>('lunch');
+  const [availableProviders, setAvailableProviders] = useState<{ provider: AIProvider; key: string }[]>([]);
   const [activeProvider, setActiveProvider] = useState<AIProvider | null>(null);
   const [activeKey, setActiveKey] = useState('');
   const webFileRef = useRef<HTMLInputElement | null>(null);
 
   useFocusEffect(useCallback(() => {
     getSettings().then(s => {
-      const picks: [AIProvider, string][] = [
-        ['claude', s.claudeApiKey || ''],
-        ['openai', s.openaiApiKey || ''],
-        ['gemini', s.geminiApiKey || ''],
-        ['groq',   s.groqApiKey   || ''],
-      ];
-      const found = picks.find(([, key]) => key.trim() !== '');
-      if (found) {
-        setActiveProvider(found[0]);
-        setActiveKey(found[1]);
-      } else {
-        setActiveProvider(null);
-        setActiveKey('');
-      }
+      const all = ([
+        ['claude', s.claudeApiKey],
+        ['openai', s.openaiApiKey],
+        ['gemini', s.geminiApiKey],
+        ['groq',   s.groqApiKey],
+      ] as [AIProvider, string][])
+        .filter(([, k]) => k?.trim())
+        .map(([provider, key]) => ({ provider, key }));
+
+      setAvailableProviders(all);
+      setActiveProvider(prev => {
+        const match = all.find(p => p.provider === prev);
+        if (match) { setActiveKey(match.key); return prev; }
+        if (all.length) { setActiveKey(all[0].key); return all[0].provider; }
+        setActiveKey(''); return null;
+      });
     });
   }, []));
   const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
@@ -323,7 +326,7 @@ export function FoodScanScreen() {
     <View style={styles.idle}>
       <Toast visible={toast.visible} message={toast.message} />
 
-      {!activeKey ? (
+      {availableProviders.length === 0 ? (
         <View style={styles.noKeyBanner}>
           <Ionicons name="key-outline" size={18} color={colors.warning} />
           <Text style={styles.noKeyText}>
@@ -331,9 +334,22 @@ export function FoodScanScreen() {
           </Text>
         </View>
       ) : (
-        <View style={styles.providerBadge}>
-          <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
-          <Text style={styles.providerBadgeText}>Powered by {PROVIDER_LABELS[activeProvider!]}</Text>
+        <View style={styles.providerRow}>
+          {availableProviders.map(({ provider }) => (
+            <TouchableOpacity
+              key={provider}
+              style={[styles.providerChip, activeProvider === provider && styles.providerChipActive]}
+              onPress={() => {
+                const p = availableProviders.find(x => x.provider === provider)!;
+                setActiveProvider(p.provider);
+                setActiveKey(p.key);
+              }}
+            >
+              <Text style={[styles.providerChipText, activeProvider === provider && styles.providerChipTextActive]}>
+                {PROVIDER_LABELS[provider]}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
 
@@ -464,6 +480,9 @@ const styles = StyleSheet.create({
   noKeyBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, backgroundColor: colors.warning + '18', borderRadius: borderRadius.md, padding: spacing.md, marginHorizontal: spacing.lg, marginTop: spacing.md },
   noKeyText: { ...typography.caption, color: colors.warning, flex: 1 },
   noKeyLink: { fontWeight: '700', textDecorationLine: 'underline' },
-  providerBadge: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start', backgroundColor: colors.primary + '18', borderRadius: borderRadius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderWidth: 1, borderColor: colors.primary + '30' },
-  providerBadgeText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
+  providerRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+  providerChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.full, backgroundColor: colors.surfaceElevated, borderWidth: 1, borderColor: colors.border },
+  providerChipActive: { backgroundColor: colors.primary + '20', borderColor: colors.primary },
+  providerChipText: { ...typography.captionBold, color: colors.textSecondary },
+  providerChipTextActive: { color: colors.primary },
 });

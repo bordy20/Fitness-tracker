@@ -53,12 +53,13 @@ export function FoodScanScreen() {
         .map(([provider, key]) => ({ provider, key }));
 
       setAvailableProviders(all);
-      setActiveProvider(prev => {
-        const match = all.find(p => p.provider === prev);
-        if (match) { setActiveKey(match.key); return prev; }
-        if (all.length) { setActiveKey(all[0].key); return all[0].provider; }
-        setActiveKey(''); return null;
-      });
+      if (all.length) {
+        setActiveProvider(all[0].provider);
+        setActiveKey(all[0].key);
+      } else {
+        setActiveProvider(null);
+        setActiveKey('');
+      }
     });
   }, []));
   const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });

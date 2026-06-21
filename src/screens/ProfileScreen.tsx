@@ -95,7 +95,7 @@ interface Props {
 
 export function ProfileScreen({ user, onSignOut }: Props = {}) {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
-  const [settings, setSettings] = useState<AppSettings>({ claudeApiKey: '', openaiApiKey: '', geminiApiKey: '', groqApiKey: '', units: 'metric', theme: 'dark' });
+  const [settings, setSettings] = useState<AppSettings>({ claudeApiKey: '', openaiApiKey: '', geminiApiKey: '', groqApiKey: '', xaiApiKey: '', units: 'metric', theme: 'dark' });
   const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' });
   const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
